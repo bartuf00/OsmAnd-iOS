@@ -1,6 +1,12 @@
 #!/bin/sh
 set -eo pipefail
 
+IOS_KEYS_TRIMMED="$(echo "$IOS_KEYS" | tr -d '[:space:]')"
+if [ -z "$IOS_KEYS_TRIMMED" ]; then
+    echo "Warning: IOS_KEYS secret is not configured. Skipping provisioning profile setup."
+    exit 0
+fi
+
 gpg --quiet --batch --yes --decrypt --passphrase="$IOS_KEYS" --output ./.github/secrets/Github_Build.mobileprovision.mobileprovision ./.github/secrets/Github_Build.mobileprovision.gpg
 gpg --quiet --batch --yes --decrypt --passphrase="$IOS_KEYS" --output ./.github/secrets/osmand_distribution.p12 ./.github/secrets/osmand_distribution.p12.gpg
 
