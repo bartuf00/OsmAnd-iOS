@@ -109,10 +109,7 @@ jobs:
     #  run: .github/secrets/install_cer.sh
     #  #run: .github/secrets/decrypt_secrets.sh
     #  working-directory: ios
-    - name: Setup keychain
-      env:
-        USER_KEY: ${{ secrets.USER_KEY }}
-      run: 'security unlock-keychain -p ${USER_KEY} ~/Library/Keychains/login.keychain-db'
+    # Keychain setup no longer needed - building without code signing to produce unsigned IPA
     - name: Build QtCore & prepare build
       env:
         LANG: "en_US.UTF-8"
@@ -140,6 +137,9 @@ jobs:
             -archivePath OsmAndMaps.xcarchive
             CURRENT_PROJECT_VERSION="${BUILD_IOS_VERSION}"
             MARKETING_VERSION="${RELEASE_IOS_VERSION}"
+            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGN_IDENTITY=""
+            CODE_SIGNING_REQUIRED=NO
             archive | xcpretty'
     - name: Zip iOS archive
       env:
@@ -154,22 +154,15 @@ jobs:
     #   run: 'wget "https://builder.osmand.net/binaries/ios/OsmAndMaps.xcarchive.zip" -O OsmAndMaps.xcarchive.zip'
     # - name: Unzip iOS archive
     #   run: 'unzip OsmAndMaps.xcarchive.zip'  
-    - name: Export iOS archive
+    - name: Package unsigned IPA
       env:
         LANG: "en_US.UTF-8"
-      run: 'xcodebuild -archivePath OsmAndMaps.xcarchive 
-            -exportOptionsPlist ios/exportOptions.plist 
-            -exportPath . 
-            -allowProvisioningUpdates 
-            -exportArchive' 
-    # - name: Upload maps archive
-    #   uses: actions/upload-artifact@v4
-    #   with:
-    #     name: OsmAndMaps-${{ github.event.inputs.releaseversion }}.${{ github.event.inputs.buildversion }}.ipa
-    #     path: 'OsmAnd Maps.ipa'
-    - name: Publish TestFlight
-      env:
-        LANG: "en_US.UTF-8"
-        APPLEID_USERNAME: ${{ secrets.APPLEID_USERNAME }}
-        APPLEID_PASSWORD: ${{ secrets.APPLEID_PASSWORD }}
-      run: 'xcrun altool --upload-app -t ios -f "OsmAnd Maps.ipa" -u "$APPLEID_USERNAME" -p "$APPLEID_PASSWORD" --verbose'
+      run: |
+        mkdir -p Payload
+        cp -r "OsmAndMaps.xcarchive/Products/Applications/OsmAnd Maps.app" Payload/
+        zip -r "OsmAnd Maps.ipa" Payload
+    - name: Upload maps archive
+      uses: actions/upload-artifact@v4
+      with:
+        name: OsmAndMaps-${{ github.event.inputs.releaseversion }}.${{ github.event.inputs.buildversion }}.ipa
+        path: 'OsmAnd Maps.ipa'
